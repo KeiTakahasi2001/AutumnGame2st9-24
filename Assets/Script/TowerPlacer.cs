@@ -6,6 +6,7 @@ public class TowerPlacer : MonoBehaviour
     [SerializeField] private int maxTowerCount = 3;  // 置けるタワーの最大数
     private GameObject previewTower;                 // マウスについてくるプレビュー用タワー
     private int placedTowerCount = 0;                // 【重要】自分でいま何個置いたかを正確に覚える変数！
+    [SerializeField] private int towerCost = 50; // このタワーを置くのに必要な金平糖の数
 
     void Start()
     {
@@ -50,28 +51,39 @@ public class TowerPlacer : MonoBehaviour
         {
             if (placedTowerCount >= maxTowerCount) return;
 
-            // プレビューを本物として昇格させる
-            previewTower.tag = "Tower";
-            SetTowerAlpha(previewTower, 1.0f);
-
-            // 当たり判定を有効にする
-            Collider2D[] colliders = previewTower.GetComponentsInChildren<Collider2D>();
-            foreach (var col in colliders)
+            // 【ここがポイント！】SugarManagerにお金を払えるかチェックする！
+            if (SugarManager.Instance != null && SugarManager.Instance.TryConsumeSugar(towerCost))
             {
-                col.enabled = true;
+                // お金が足りて支払いが成功したときだけ、ここに突入するよ！
+
+                // プレビューを本物として昇格させる
+                previewTower.tag = "Tower";
+                SetTowerAlpha(previewTower, 1.0f);
+
+                // 当たり判定を有効にする
+                Collider2D[] colliders = previewTower.GetComponentsInChildren<Collider2D>();
+                foreach (var col in colliders)
+                {
+                    col.enabled = true;
+                }
+
+                // 置いた数を1個増やす！
+                placedTowerCount++;
+                Debug.Log("ケーキスタンドを置いたよ！ 現在の数: " + placedTowerCount + " / " + maxTowerCount);
+
+                // プレビューの役目を終えたので空にする
+                previewTower = null;
+
+                // まだ上限に達していなければ、次のプレビューを作る
+                if (placedTowerCount < maxTowerCount)
+                {
+                    CreateNewPreview();
+                }
             }
-
-            // 置いた数を1個増やす！
-            placedTowerCount++;
-            Debug.Log("ケーキスタンドを置いたよ！ 現在の数: " + placedTowerCount + " / " + maxTowerCount);
-
-            // プレビューの役目を終えたので空にする
-            previewTower = null;
-
-            // まだ上限に達していなければ、次のプレビューを作る
-            if (placedTowerCount < maxTowerCount)
+            else
             {
-                CreateNewPreview();
+                // 金平糖が足りなかったとき！
+                Debug.Log("金平糖が足りないよ……！置けません！");
             }
         }
     }
