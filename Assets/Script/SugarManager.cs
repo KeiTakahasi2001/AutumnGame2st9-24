@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro; // 画面に文字（UI）で表示するために使います！
 
+
 public class SugarManager : MonoBehaviour
 {
     // 他のスクリプトから「何個持ってるか」「減らせるか」を簡単に確認できるようにする仕組み
@@ -73,7 +74,7 @@ public class SugarManager : MonoBehaviour
     {
         if (sugarText != null)
         {
-            sugarText.text = "金平糖: " + currentSugar;
+            sugarText.text = "Sugar : " + currentSugar;
         }
     }
 }
