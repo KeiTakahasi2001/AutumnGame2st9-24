@@ -2,36 +2,67 @@ using UnityEngine;
 
 public class TowerAttack : MonoBehaviour
 {
-    [SerializeField] private int attackPower = 1;     // 攻撃力
-    [SerializeField] private float attackInterval = 1f; // 【重要】何秒おきに攻撃するか（1秒に1回なら1f、0.5秒なら0.5f）
-    private float attackTimer = 0f;                   // 攻撃までの残り時間を数えるタイマー
+    [SerializeField] private GameObject bulletPrefab; // 飛んでいくナイフのプレハブ
+    [SerializeField] private float attackInterval = 1f; // 何秒おきに撃つか
+    private float attackTimer = 0f;
+
+    private Transform currentTarget; // 今狙っている敵
 
     void Update()
     {
-        // 攻撃タイマーを毎フレーム減らしていく
+        // 攻撃タイマーを減らす
         if (attackTimer > 0f)
         {
             attackTimer -= Time.deltaTime;
         }
+
+        // 狙っている敵がいなくなったらリセット
+        if (currentTarget == null)
+        {
+            return;
+        }
+
+        // タイマーが0以下になったら発射！
+        if (attackTimer <= 0f)
+        {
+            Shoot();
+            attackTimer = attackInterval; // タイマーをリセット
+        }
     }
 
+    // 範囲内に敵が入ってきたとき（ずっと滞在している間）
     private void OnTriggerStay2D(Collider2D collision)
     {
-        if (collision.CompareTag("Enemy"))
+        // まだターゲットがいなくて、かつ相手が「Enemy」タグならターゲットにする！
+        if (currentTarget == null && collision.CompareTag("Enemy"))
         {
-            // タイマーが0以下になっていたら攻撃できる！
-            if (attackTimer <= 0f)
-            {
-                EnemyMover enemy = collision.GetComponent<EnemyMover>();
+            currentTarget = collision.transform;
+        }
+    }
 
-                if (enemy != null)
-                {
-                    enemy.TakeDamage(attackPower);
+    // 範囲から敵が出ていったとき
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        // 狙っていた敵が範囲外に出たらターゲットを外す
+        if (currentTarget != null && collision.transform == currentTarget)
+        {
+            currentTarget = null;
+        }
+    }
 
-                    // 攻撃したので、タイマーをリセットする（例: 1秒間は次の攻撃ができない）
-                    attackTimer = attackInterval;
-                }
-            }
+    // ナイフを発射する関数
+    private void Shoot()
+    {
+        if (bulletPrefab == null || currentTarget == null) return;
+
+        // 1. タワーの位置にナイフを生成する
+        GameObject bulletObj = Instantiate(bulletPrefab, transform.position, Quaternion.identity);
+
+        // 2. 生成したナイフの「Bullet」スクリプトを取得して、狙う敵を教える！
+        Bullet bullet = bulletObj.GetComponent<Bullet>();
+        if (bullet != null)
+        {
+            bullet.SetTarget(currentTarget);
         }
     }
 }

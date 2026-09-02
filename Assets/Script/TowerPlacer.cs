@@ -2,24 +2,42 @@ using UnityEngine;
 
 public class TowerPlacer : MonoBehaviour
 {
-    [SerializeField] private GameObject towerPrefab; // 配置するタワーのプレハブ
-    [SerializeField] private int maxTowerCount = 3;  // 置けるタワーの最大数
-    private GameObject previewTower;                 // マウスについてくるプレビュー用タワー
-    private int placedTowerCount = 0;                // 【重要】自分でいま何個置いたかを正確に覚える変数！
-    [SerializeField] private int towerCost = 50; // このタワーを置くのに必要な金平糖の数
+    [System.Serializable]
+    public struct TowerData
+    {
+        public string towerName;         // タワーの名前（例: 「ケーキスタンド」「チョコ床」）
+        public GameObject towerPrefab;   // 配置するタワーのプレハブ
+        public int towerCost;            // 置くのに必要な金平糖の数
+        public int maxCount;             // 【新機能！】このタワーを置ける最大個数
+    }
+
+    [SerializeField] private TowerData[] availableTowers; // 配置できるタワーたちのリスト
+
+    private int selectedTowerIndex = 0;                  // いま何番目のタワーを選んでいるか
+    private GameObject previewTower;                     // マウスについてくるプレビュー用タワー
+
+    // 【新機能！】各タワーが「いま何個置かれたか」を種類ごとに数えておく配列
+    private int[] placedCounts;
 
     void Start()
     {
-        // 最初にプレビューを1個作る
+        // タワーの種類数に合わせて、カウント用の箱を用意する
+        placedCounts = new int[availableTowers.Length];
         CreateNewPreview();
     }
 
     void Update()
     {
-        // 1. すでに上限数に達している場合
-        if (placedTowerCount >= maxTowerCount)
+        // キーボードでタワーを切り替える（1キー、2キー、3キー...）
+        if (Input.GetKeyDown(KeyCode.Alpha1) && availableTowers.Length > 0) SwitchTower(0);
+        if (Input.GetKeyDown(KeyCode.Alpha2) && availableTowers.Length > 1) SwitchTower(1);
+        if (Input.GetKeyDown(KeyCode.Alpha3) && availableTowers.Length > 2) SwitchTower(2);
+
+        // いま選んでいるタワーがすでに上限に達しているかチェック
+        bool isLimitReached = placedCounts[selectedTowerIndex] >= availableTowers[selectedTowerIndex].maxCount;
+
+        if (isLimitReached)
         {
-            // プレビューが存在していれば、非表示にして完全にストップ
             if (previewTower != null && previewTower.activeSelf)
             {
                 previewTower.SetActive(false);
@@ -27,7 +45,6 @@ public class TowerPlacer : MonoBehaviour
             return;
         }
 
-        // 2. 上限未満のとき、プレビューが非表示なら再表示する
         if (previewTower != null && !previewTower.activeSelf)
         {
             previewTower.SetActive(true);
@@ -38,24 +55,27 @@ public class TowerPlacer : MonoBehaviour
             CreateNewPreview();
         }
 
-        // 3. マウスの位置にプレビューを追従させる
+        // マウスの位置にプレビューを追従させる
         Vector3 mousePos = Input.mousePosition;
         mousePos.z = -Camera.main.transform.position.z;
         Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
         worldPos.z = 0f;
 
-        previewTower.transform.position = worldPos;
+        if (previewTower != null)
+        {
+            previewTower.transform.position = worldPos;
+        }
 
-        // 4. 左クリックを離した瞬間に配置する
+        // 左クリックを離した瞬間に配置する
         if (Input.GetMouseButtonUp(0))
         {
-            if (placedTowerCount >= maxTowerCount) return;
+            if (isLimitReached) return;
 
-            // 【ここがポイント！】SugarManagerにお金を払えるかチェックする！
-            if (SugarManager.Instance != null && SugarManager.Instance.TryConsumeSugar(towerCost))
+            int currentCost = availableTowers[selectedTowerIndex].towerCost;
+
+            // お金を払えるかチェック
+            if (SugarManager.Instance != null && SugarManager.Instance.TryConsumeSugar(currentCost))
             {
-                // お金が足りて支払いが成功したときだけ、ここに突入するよ！
-
                 // プレビューを本物として昇格させる
                 previewTower.tag = "Tower";
                 SetTowerAlpha(previewTower, 1.0f);
@@ -67,30 +87,49 @@ public class TowerPlacer : MonoBehaviour
                     col.enabled = true;
                 }
 
-                // 置いた数を1個増やす！
-                placedTowerCount++;
-                Debug.Log("ケーキスタンドを置いたよ！ 現在の数: " + placedTowerCount + " / " + maxTowerCount);
+                // 「選んでいる種類のタワー」の置いた数を1個増やす！
+                placedCounts[selectedTowerIndex]++;
+                Debug.Log(availableTowers[selectedTowerIndex].towerName + "を置いたよ！ 現在の数: " + placedCounts[selectedTowerIndex] + " / " + availableTowers[selectedTowerIndex].maxCount);
 
-                // プレビューの役目を終えたので空にする
                 previewTower = null;
 
-                // まだ上限に達していなければ、次のプレビューを作る
-                if (placedTowerCount < maxTowerCount)
+                // 上限に達していなければ次のプレビューを作る
+                if (placedCounts[selectedTowerIndex] < availableTowers[selectedTowerIndex].maxCount)
                 {
                     CreateNewPreview();
                 }
             }
             else
             {
-                // 金平糖が足りなかったとき！
                 Debug.Log("金平糖が足りないよ……！置けません！");
             }
         }
     }
 
+    private void SwitchTower(int index)
+    {
+        if (selectedTowerIndex == index) return;
+
+        selectedTowerIndex = index;
+        Debug.Log("タワーを切り替えたよ: " + availableTowers[selectedTowerIndex].towerName);
+
+        if (previewTower != null)
+        {
+            Destroy(previewTower);
+            previewTower = null;
+        }
+        CreateNewPreview();
+    }
+
     private void CreateNewPreview()
     {
-        previewTower = Instantiate(towerPrefab);
+        if (availableTowers.Length == 0) return;
+
+        // すでに上限に達しているならプレビューを作らない
+        if (placedCounts[selectedTowerIndex] >= availableTowers[selectedTowerIndex].maxCount) return;
+
+        GameObject prefabToUse = availableTowers[selectedTowerIndex].towerPrefab;
+        previewTower = Instantiate(prefabToUse);
         SetTowerAlpha(previewTower, 0.5f);
 
         Collider2D[] colliders = previewTower.GetComponentsInChildren<Collider2D>();

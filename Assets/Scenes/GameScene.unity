@@ -149,9 +149,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 244ed40d517788e44b0bab68b033eca4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TowerPlacer
-  towerPrefab: {fileID: 2756636767260338521, guid: 33ad7f926c30b3640b9f4c44c2620ca6, type: 3}
-  maxTowerCount: 3
-  towerCost: 50
+  availableTowers:
+  - towerName: CakeStand
+    towerPrefab: {fileID: 2756636767260338521, guid: 33ad7f926c30b3640b9f4c44c2620ca6, type: 3}
+    towerCost: 50
+    maxCount: 3
+  - towerName: SlowTower
+    towerPrefab: {fileID: 1142787709684960233, guid: cdfdcf2fcd6fc01498db574f05f4a695, type: 3}
+    towerCost: 5
+    maxCount: 4
 --- !u!4 &121906931
 Transform:
   m_ObjectHideFlags: 0
@@ -182,7 +188,7 @@ MonoBehaviour:
   enemyPrefab: {fileID: 3053966015089237023, guid: f9b2a2c5f0ed4ad43b3b3b8e1cb73a4c, type: 3}
   spawnPoint: {fileID: 493325549}
   goalTransform: {fileID: 1081446227}
-  spawnInterval: 1
+  spawnInterval: 3
 --- !u!1 &426401951
 GameObject:
   m_ObjectHideFlags: 0

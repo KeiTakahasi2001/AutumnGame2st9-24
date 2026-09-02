@@ -233,3 +233,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53742ef9a1643794dbd62b22f30221a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TowerAttack
+  bulletPrefab: {fileID: 5295674227162742940, guid: f1ff275f420b46245bf794111ed78d24, type: 3}
+  attackInterval: 1
