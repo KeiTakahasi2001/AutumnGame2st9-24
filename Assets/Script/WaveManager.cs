@@ -1,31 +1,29 @@
 using UnityEngine;
 using System.Collections;
-using TMPro; // UIでWave数やクリアを表示するため
+using TMPro;
 
 public class WaveManager : MonoBehaviour
 {
-    // 1つのウェーブの設定データ
     [System.Serializable]
     public struct WaveData
     {
-        public string waveName;          // 例：「Wave 1」
-        public GameObject enemyPrefab;   // 出現させる敵の種類
-        public int enemyCount;           // そのウェーブで出す敵の数
-        public float spawnInterval;      // 敵が出る間隔（秒）
+        public string waveName;
+        public GameObject enemyPrefab;
+        public int enemyCount;
+        public float spawnInterval;
     }
 
     [Header("ウェーブの設定")]
-    [SerializeField] private WaveData[] waves;          // ウェーブのリストデータ
-    [SerializeField] private Transform spawnPoint;       // 敵の出現場所
-    [SerializeField] private Transform goalTransform;    // 敵の目指すゴール
-    [SerializeField] private float waveInterval = 5f;    // 次のウェーブまでの待ち時間
+    [SerializeField] private WaveData[] waves;
+    [SerializeField] private WaypointPath targetPath;
+    [SerializeField] private float waveInterval = 5f;
 
     [Header("UI設定")]
-    [SerializeField] private TextMeshProUGUI waveText;   // 画面の「Wave 1/3」等の表示
-    [SerializeField] private GameObject stageClearUI;    // 「STAGE CLEAR」の画像やパネル
+    [SerializeField] private TextMeshProUGUI waveText;
+    [SerializeField] private GameObject stageClearUI;
 
-    public static int aliveEnemyCount = 0;               // 【重要】いま画面に生き残っている敵の数
-    private int currentWaveIndex = 0;                    // いま何番目のウェーブか
+    public static int aliveEnemyCount = 0;
+    private int currentWaveIndex = 0;
 
     void Start()
     {
@@ -33,7 +31,7 @@ public class WaveManager : MonoBehaviour
 
         if (stageClearUI != null)
         {
-            stageClearUI.SetActive(false); // 最初はクリア表示を隠しておく
+            stageClearUI.SetActive(false);
         }
 
         StartCoroutine(StartNextWave());
@@ -41,7 +39,6 @@ public class WaveManager : MonoBehaviour
 
     IEnumerator StartNextWave()
     {
-        // すべてのウェーブが終わったかチェック
         if (currentWaveIndex >= waves.Length)
         {
             yield break;
@@ -49,7 +46,6 @@ public class WaveManager : MonoBehaviour
 
         WaveData currentWave = waves[currentWaveIndex];
 
-        // UI表示を更新（例: "Wave 1 / 3"）
         if (waveText != null)
         {
             waveText.text = currentWave.waveName + " (" + (currentWaveIndex + 1) + "/" + waves.Length + ")";
@@ -57,55 +53,58 @@ public class WaveManager : MonoBehaviour
 
         Debug.Log(currentWave.waveName + " スタート！");
 
-        // 指定された数だけ敵をスポーンさせるループ
+        // 【新機能！】Waveが始まる直前に、3秒間だけ予告ルートを点灯表示する！
+        if (targetPath != null)
+        {
+            targetPath.ShowPathLineForSeconds(3f);
+        }
+
+        // 予告線が見えるように少しだけ待ってから敵を出し始める（1.5秒待機）
+        yield return new WaitForSeconds(1.5f);
+
         for (int i = 0; i < currentWave.enemyCount; i++)
         {
-            if (spawnPoint != null && currentWave.enemyPrefab != null)
+            if (currentWave.enemyPrefab != null && targetPath != null)
             {
-                GameObject newEnemy = Instantiate(currentWave.enemyPrefab, spawnPoint.position, Quaternion.identity);
+                GameObject newEnemy = Instantiate(currentWave.enemyPrefab);
                 EnemyMover enemyScript = newEnemy.GetComponent<EnemyMover>();
-                if (enemyScript != null && goalTransform != null)
+
+                if (enemyScript != null)
                 {
-                    enemyScript.SetGoal(goalTransform);
+                    enemyScript.SetPath(targetPath);
                 }
             }
 
-            // 次の敵が出るまで指定秒数待つ
             yield return new WaitForSeconds(currentWave.spawnInterval);
         }
 
-        // --- このウェーブの全敵を出し切った後の処理 ---
-
-        // 画面上の敵が0匹になるまで待機する！
         while (aliveEnemyCount > 0)
         {
-            yield return null; // 1フレーム待って再チェック
+            yield return null;
         }
 
         Debug.Log(currentWave.waveName + " クリア！");
 
-        currentWaveIndex++; // 次のウェーブ番号へ進める
+        currentWaveIndex++;
 
-        // まだ次のウェーブがある場合
         if (currentWaveIndex < waves.Length)
         {
             Debug.Log("次のウェーブまであと " + waveInterval + " 秒…");
-            yield return new WaitForSeconds(waveInterval); // ウェーブ間の休憩時間
-            StartCoroutine(StartNextWave());               // 次のウェーブを開始！
+            yield return new WaitForSeconds(waveInterval);
+            StartCoroutine(StartNextWave());
         }
         else
         {
-            // 全てのウェーブを撃破！！
             StageClear();
         }
     }
 
     private void StageClear()
     {
-        Debug.Log("【全ウェーブクリア！！】おめでとう！舞台成功！");
+        Debug.Log("【全ウェーブクリア！！】おめでとう！");
         if (stageClearUI != null)
         {
-            stageClearUI.SetActive(true); // クリア画面を表示！
+            stageClearUI.SetActive(true);
         }
     }
 }

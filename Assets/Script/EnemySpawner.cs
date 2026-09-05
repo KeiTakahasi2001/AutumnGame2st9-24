@@ -27,7 +27,7 @@ public class EnemySpawner : MonoBehaviour
                 EnemyMover enemyScript = newEnemy.GetComponent<EnemyMover>();
                 if (enemyScript != null && goalTransform != null)
                 {
-                    enemyScript.SetGoal(goalTransform);
+                    //enemyScript.SetGoal(goalTransform);//エラーが出たのとWaveContrlloerに役割を譲ったので勉強のためだけにいったんこのまま保管
                 }
             }
             else
