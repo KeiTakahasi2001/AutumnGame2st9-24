@@ -2,21 +2,30 @@ using UnityEngine;
 
 public class EnemyMover : MonoBehaviour
 {
-    [SerializeField] private Transform goalTransform; // ゴール（右側）の位置
-    [SerializeField] private float moveSpeed = 3f;    // 敵の移動スピード
-    [SerializeField] private int maxHp = 3;           // 敵の体力（HP）
+    [SerializeField] private Transform goalTransform;
+    [SerializeField] private float moveSpeed = 3f;
+    [SerializeField] private int maxHp = 3;
     private int currentHp;
 
-    private float originalSpeed;                      // 当初のスピードを記憶しておく変数
-    private float speedMultiplier = 1.0f;             // スロー効果などの倍率（1.0なら通常）
+    private float originalSpeed;
+    private float speedMultiplier = 1.0f;
 
     void Start()
     {
         currentHp = maxHp;
-        originalSpeed = moveSpeed; // 最初の一歩の速度を保存！
+        originalSpeed = moveSpeed;
+
+        // 生み出されたらカウントを +1 する
+        WaveManager.aliveEnemyCount++;
     }
 
-    // 【新追加】スポナーからゴールを受け取るための専用の窓口メソッド！
+    // 誰に消されようと、オブジェクトが消滅する瞬間に絶対に呼ばれるメソッド
+    private void OnDestroy()
+    {
+        // どんな理由で消えたとしても、必ず全体の敵カウントを -1 する！
+        WaveManager.aliveEnemyCount--;
+    }
+
     public void SetGoal(Transform newGoal)
     {
         goalTransform = newGoal;
@@ -26,14 +35,13 @@ public class EnemyMover : MonoBehaviour
     {
         if (goalTransform != null)
         {
-            // 【変更】元のスピード × 倍率（スロー等）を掛け合わせて動くようにする！
             float currentMoveSpeed = originalSpeed * speedMultiplier;
             transform.position = Vector3.MoveTowards(transform.position, goalTransform.position, currentMoveSpeed * Time.deltaTime);
 
             if (Vector3.Distance(transform.position, goalTransform.position) < 0.1f)
             {
+                // もうカウント減らす処理は呼ばなくてOK！ただDestroyするだけで OnDestroy() が自動で働く！
                 Destroy(gameObject);
-                Debug.Log("ゴールに到達された！");
             }
         }
     }
@@ -45,12 +53,11 @@ public class EnemyMover : MonoBehaviour
 
         if (currentHp <= 0)
         {
+            // こちらもただDestroyするだけ！
             Destroy(gameObject);
-            Debug.Log("敵を倒した！やったー！");
         }
     }
 
-    // 【新規追加！】外からスピードの倍率（スロー効果）を変えるためのメソッド
     public void SetSpeedMultiplier(float multiplier)
     {
         speedMultiplier = multiplier;

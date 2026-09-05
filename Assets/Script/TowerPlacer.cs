@@ -8,7 +8,8 @@ public class TowerPlacer : MonoBehaviour
         public string towerName;         // タワーの名前（例: 「ケーキスタンド」「チョコ床」）
         public GameObject towerPrefab;   // 配置するタワーのプレハブ
         public int towerCost;            // 置くのに必要な金平糖の数
-        public int maxCount;             // 【新機能！】このタワーを置ける最大個数
+        public int maxCount;             // このタワーを置ける最大個数
+        public LayerMask placementLayer; // 【新機能！】このタワーが「置ける」レイヤーを指定！
     }
 
     [SerializeField] private TowerData[] availableTowers; // 配置できるタワーたちのリスト
@@ -16,12 +17,10 @@ public class TowerPlacer : MonoBehaviour
     private int selectedTowerIndex = 0;                  // いま何番目のタワーを選んでいるか
     private GameObject previewTower;                     // マウスについてくるプレビュー用タワー
 
-    // 【新機能！】各タワーが「いま何個置かれたか」を種類ごとに数えておく配列
-    private int[] placedCounts;
+    private int[] placedCounts;                          // 各タワーの配置数カウント
 
     void Start()
     {
-        // タワーの種類数に合わせて、カウント用の箱を用意する
         placedCounts = new int[availableTowers.Length];
         CreateNewPreview();
     }
@@ -45,6 +44,27 @@ public class TowerPlacer : MonoBehaviour
             return;
         }
 
+        // マウスのワールド座標を取得
+        Vector3 mousePos = Input.mousePosition;
+        mousePos.z = -Camera.main.transform.position.z;
+        Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
+        worldPos.z = 0f;
+
+        // 【新機能！】現在選んでいるタワーの「指定レイヤー」の上にマウスがあるかチェック！
+        LayerMask targetLayer = availableTowers[selectedTowerIndex].placementLayer;
+        bool isValidPlacement = Physics2D.OverlapCircle(worldPos, 0.2f, targetLayer);
+
+        // 指定されたレイヤーの上でない（＝置けない場所）ときはプレビューを消す
+        if (!isValidPlacement)
+        {
+            if (previewTower != null && previewTower.activeSelf)
+            {
+                previewTower.SetActive(false);
+            }
+            return; // 置けない場所なら配置処理を行わない！
+        }
+
+        // 置ける場所ならプレビューを表示
         if (previewTower != null && !previewTower.activeSelf)
         {
             previewTower.SetActive(true);
@@ -55,18 +75,12 @@ public class TowerPlacer : MonoBehaviour
             CreateNewPreview();
         }
 
-        // マウスの位置にプレビューを追従させる
-        Vector3 mousePos = Input.mousePosition;
-        mousePos.z = -Camera.main.transform.position.z;
-        Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
-        worldPos.z = 0f;
-
         if (previewTower != null)
         {
             previewTower.transform.position = worldPos;
         }
 
-        // 左クリックを離した瞬間に配置する
+        // 左クリックを離した瞬間に配置する（正しいレイヤーの上だけのとき）
         if (Input.GetMouseButtonUp(0))
         {
             if (isLimitReached) return;
@@ -76,24 +90,20 @@ public class TowerPlacer : MonoBehaviour
             // お金を払えるかチェック
             if (SugarManager.Instance != null && SugarManager.Instance.TryConsumeSugar(currentCost))
             {
-                // プレビューを本物として昇格させる
                 previewTower.tag = "Tower";
                 SetTowerAlpha(previewTower, 1.0f);
 
-                // 当たり判定を有効にする
                 Collider2D[] colliders = previewTower.GetComponentsInChildren<Collider2D>();
                 foreach (var col in colliders)
                 {
                     col.enabled = true;
                 }
 
-                // 「選んでいる種類のタワー」の置いた数を1個増やす！
                 placedCounts[selectedTowerIndex]++;
                 Debug.Log(availableTowers[selectedTowerIndex].towerName + "を置いたよ！ 現在の数: " + placedCounts[selectedTowerIndex] + " / " + availableTowers[selectedTowerIndex].maxCount);
 
                 previewTower = null;
 
-                // 上限に達していなければ次のプレビューを作る
                 if (placedCounts[selectedTowerIndex] < availableTowers[selectedTowerIndex].maxCount)
                 {
                     CreateNewPreview();
@@ -125,7 +135,6 @@ public class TowerPlacer : MonoBehaviour
     {
         if (availableTowers.Length == 0) return;
 
-        // すでに上限に達しているならプレビューを作らない
         if (placedCounts[selectedTowerIndex] >= availableTowers[selectedTowerIndex].maxCount) return;
 
         GameObject prefabToUse = availableTowers[selectedTowerIndex].towerPrefab;
